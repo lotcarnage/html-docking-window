@@ -1,0 +1,452 @@
+<html lang="ja">
+
+<head>
+	<meta charset="UTF-8">
+
+	<style>
+		body {
+			background-color: blueviolet;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="demo"></div>
+	<div id="command"></div>
+
+<script>/******/ (() => { // webpackBootstrap
+/******/ 	"use strict";
+/*!***********************!*\
+  !*** ./built/main.js ***!
+  \***********************/
+
+var UiParts;
+(function (UiParts) {
+    class HtmlWindowContainer {
+        constructor(initial_window) {
+            this.container_ = document.createElement("div");
+            this.container_type_ = "single";
+            this.container_.style.display = "grid";
+            this.container_.style.gridAutoColumns = "max-content";
+            this.container_.style.gridAutoRows = "max-content";
+            this.container_.style.gridTemplateAreas = `'"a0"'`;
+            this.window_list_ = new Array(0);
+            this.window_list_.push(initial_window);
+            this.container_.appendChild(initial_window.root);
+            initial_window.root.style.gridArea = "a0";
+            initial_window.parent_container = this;
+        }
+        UpdateGridArea() {
+            const num_windows = this.window_list_.length;
+            for (let i = 0; i < num_windows; i++) {
+                this.window_list_[i].root.style.gridArea = `a${i}`;
+            }
+            const grid_area_array = new Array(num_windows);
+            if (this.container_type_ === "vertical") {
+                for (let i = 0; i < num_windows; i++) {
+                    grid_area_array[i] = `"a${i}"`;
+                }
+                this.container_.style.gridTemplateAreas = `${grid_area_array.join(" ")}`;
+            }
+            else {
+                for (let i = 0; i < num_windows; i++) {
+                    grid_area_array[i] = `a${i}`;
+                }
+                this.container_.style.gridTemplateAreas = `"${grid_area_array.join(" ")}"`;
+            }
+            return;
+        }
+        GetEntryType() {
+            if (this.window_list_.length <= 1) {
+                return { horizontal: true, vertical: true };
+            }
+            if (this.container_type_ === "horizontal") {
+                return { horizontal: true, vertical: false };
+            }
+            return { horizontal: false, vertical: true };
+        }
+        Enter(new_window, index, entry_type) {
+            this.window_list_.splice(index, 0, new_window);
+            this.container_.appendChild(new_window.root);
+            new_window.parent_container = this;
+            if (this.window_list_.length === 2) {
+                this.container_type_ = entry_type;
+            }
+            this.UpdateGridArea();
+        }
+        Remove(remove_window) {
+            if (remove_window.root.parentElement !== this.container_) {
+                return false;
+            }
+            const index = parseInt(remove_window.root.style.gridArea.slice(1));
+            this.window_list_.splice(index, 1);
+            this.container_.removeChild(remove_window.root);
+            remove_window.parent_container = null;
+            if (this.window_list_.length === 1) {
+                this.container_type_ = "single";
+            }
+            this.UpdateGridArea();
+            return true;
+        }
+        get root() {
+            return this.container_;
+        }
+        UnifyWidth(width) {
+            for (let window of this.window_list_) {
+                if (parseInt(window.frame.style.width) !== width) {
+                    window.frame.style.width = width.toString();
+                }
+            }
+        }
+        UnifyHeight(height) {
+            for (let window of this.window_list_) {
+                if (parseInt(window.frame.style.height) !== height) {
+                    window.frame.style.height = height.toString();
+                }
+            }
+        }
+        UnifySize(width, height) {
+            if (this.container_type_ === "horizontal") {
+                this.UnifyHeight(height);
+            }
+            else if (this.container_type_ === "vertical") {
+                this.UnifyWidth(width);
+            }
+            return;
+        }
+    }
+    UiParts.HtmlWindowContainer = HtmlWindowContainer;
+    class DropArea {
+        constructor(parent, drop_callback) {
+            this.parent_ = parent;
+            this.is_visible_ = false;
+            this.drop_area_top_ = DropArea.CreateDropArea(DropArea.v_width, DropArea.v_height, "top", drop_callback);
+            this.drop_area_bottom_ = DropArea.CreateDropArea(DropArea.v_width, DropArea.v_height, "bottom", drop_callback);
+            this.drop_area_left_ = DropArea.CreateDropArea(DropArea.h_width, DropArea.h_height, "left", drop_callback);
+            this.drop_area_right_ = DropArea.CreateDropArea(DropArea.h_width, DropArea.h_height, "right", drop_callback);
+            this.drop_areas_ = new Array(0);
+            this.drop_areas_.push(this.drop_area_top_);
+            this.drop_areas_.push(this.drop_area_bottom_);
+            this.drop_areas_.push(this.drop_area_left_);
+            this.drop_areas_.push(this.drop_area_right_);
+            parent.appendChild(this.drop_area_top_);
+            parent.appendChild(this.drop_area_bottom_);
+            parent.appendChild(this.drop_area_left_);
+            parent.appendChild(this.drop_area_right_);
+        }
+        static CreateDropArea(width, height, drop_type, drop_callback) {
+            let is_drag_overed = false;
+            const drop_area = document.createElement("div");
+            drop_area.style.display = "none";
+            drop_area.style.backgroundColor = "#ffffff";
+            drop_area.setAttribute("class", "DropArea");
+            drop_area.style.border = "2px solid #202020;";
+            drop_area.style.position = "absolute";
+            drop_area.style.width = `${width}px`;
+            drop_area.style.height = `${height}px`;
+            drop_area.addEventListener("dragenter", (event) => {
+                if (is_drag_overed === false) {
+                    drop_area.style.backgroundColor = "#ff0000";
+                    is_drag_overed = true;
+                    console.log("# enter");
+                }
+            });
+            drop_area.addEventListener("dragover", (event) => {
+                event.preventDefault();
+            });
+            drop_area.addEventListener("dragleave", (event) => {
+                if (is_drag_overed) {
+                    drop_area.style.backgroundColor = "#ffffff";
+                    is_drag_overed = false;
+                }
+                console.log("# leave");
+            });
+            drop_area.addEventListener("drop", (event) => {
+                event.stopPropagation();
+                event.preventDefault();
+                if (is_drag_overed) {
+                    drop_callback(drop_type);
+                    drop_area.style.backgroundColor = "#ffffff";
+                    is_drag_overed = false;
+                }
+                console.log("# drop");
+            });
+            return drop_area;
+        }
+        ApplyPosition() {
+            const center_x = Math.floor(this.parent_.clientWidth / 2);
+            const center_y = Math.floor(this.parent_.clientHeight / 2);
+            const top = center_y - DropArea.v_height - Math.floor(DropArea.h_height / 2);
+            const left = center_x - DropArea.h_width - Math.floor(DropArea.v_width / 2);
+            this.drop_area_top_.style.top = `${top}px`;
+            this.drop_area_top_.style.left = `${left + DropArea.h_width}px`;
+            this.drop_area_bottom_.style.top = `${top + DropArea.h_height + DropArea.v_height}px`;
+            this.drop_area_bottom_.style.left = `${left + DropArea.h_width}px`;
+            this.drop_area_left_.style.top = `${top + DropArea.v_height}px`;
+            this.drop_area_left_.style.left = `${left}px`;
+            this.drop_area_right_.style.top = `${top + DropArea.v_height}px`;
+            this.drop_area_right_.style.left = `${left + DropArea.h_width + DropArea.v_width}px`;
+        }
+        Appear() {
+            if (this.is_visible_ === true) {
+                return;
+            }
+            this.ApplyPosition();
+            for (let drop_area of this.drop_areas_) {
+                drop_area.style.display = "block";
+            }
+            console.log("Appear");
+            this.is_visible_ = true;
+        }
+        HideUp() {
+            if (this.is_visible_ === false) {
+                return;
+            }
+            for (let drop_area of this.drop_areas_) {
+                drop_area.style.display = "none";
+                drop_area.style.backgroundColor = "#ffffff";
+            }
+            console.log("Hide");
+            this.is_visible_ = false;
+        }
+    }
+    DropArea.h_width = 20;
+    DropArea.h_height = 36;
+    DropArea.v_width = 36;
+    DropArea.v_height = 20;
+    UiParts.DropArea = DropArea;
+    class HtmlDockingWindow {
+        constructor(title, interior) {
+            var _a;
+            if (!HtmlDockingWindow.window_list_) {
+                HtmlDockingWindow.window_list_ = new Array(0);
+                HtmlDockingWindow.window_id_counter_ = 0;
+            }
+            if (!HtmlDockingWindow.object_locate_table_) {
+                HtmlDockingWindow.object_locate_table_ = new Map();
+            }
+            if (!HtmlDockingWindow.observer_) {
+                HtmlDockingWindow.observer_ = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        var _a;
+                        if (mutation.type !== "attributes") {
+                            return;
+                        }
+                        if (HtmlDockingWindow.object_locate_table_ === null) {
+                            return;
+                        }
+                        const element = (mutation.target);
+                        const target_window = HtmlDockingWindow.object_locate_table_.get(element);
+                        (_a = target_window === null || target_window === void 0 ? void 0 : target_window.parent_container_) === null || _a === void 0 ? void 0 : _a.UnifySize(parseInt(element.style.width), parseInt(element.style.height));
+                    });
+                });
+            }
+            this.is_darg_entering = false;
+            this.window_id_ = HtmlDockingWindow.window_id_counter_;
+            HtmlDockingWindow.window_id_counter_++;
+            HtmlDockingWindow.window_list_.push(this);
+            this.user_interior_ = interior;
+            this.window_holder_ = document.createElement("div");
+            this.window_exterior_ = document.createElement("div");
+            this.window_title_area_ = document.createElement("div");
+            this.window_interior_ = document.createElement("div");
+            this.window_title_area_.appendChild(HtmlDockingWindow.CreateText(title));
+            this.window_exterior_.appendChild(this.window_title_area_);
+            this.window_exterior_.appendChild(this.window_interior_);
+            this.window_interior_.appendChild(interior);
+            this.window_holder_.appendChild(this.window_exterior_);
+            this.drop_area_ = new DropArea(this.window_holder_, (drop_type) => {
+                console.log(drop_type);
+            });
+            this.window_holder_.style.position = "relative";
+            this.window_holder_.draggable = true;
+            this.window_exterior_.style.minWidth = `${title.length}em`;
+            this.window_exterior_.style.minHeight = `2em`;
+            this.window_exterior_.style.overflow = "scroll";
+            this.window_exterior_.style.resize = "both";
+            this.window_exterior_.style.width = "300px";
+            this.window_exterior_.style.margin = "0px";
+            this.window_title_area_.style.backgroundColor = "#a0d0c0";
+            this.window_interior_.style.backgroundColor = "#aaaaaa";
+            this.window_exterior_.style.backgroundColor = "#909090";
+            this.window_holder_.style.backgroundColor = "#909090";
+            this.parent_container_ = null;
+            HtmlDockingWindow.object_locate_table_.set(this.window_exterior_, this);
+            this.window_holder_.addEventListener('dragstart', (event) => {
+                if (event === null)
+                    return;
+                if (event.dataTransfer === null)
+                    return;
+                event.stopPropagation();
+                event.dataTransfer.setData("window_id", this.window_id_.toString());
+                console.log("drag start", this.window_title_area_.innerText);
+            });
+            this.window_holder_.addEventListener('dragenter', (event) => {
+                event.preventDefault();
+                const rect = event.currentTarget.getBoundingClientRect();
+                console.log("drag enter 1", this.window_title_area_.innerText, this.is_darg_entering, rect.top, rect.left, rect.bottom, rect.right, `(${event.clientX}, ${event.clientY})`);
+                if (this.is_darg_entering === false) {
+                    if (event && event.dataTransfer) {
+                        const drag_window_id = parseInt(event.dataTransfer.getData("window_id"));
+                        if (this.window_id_ !== drag_window_id) {
+                            this.drop_area_.Appear();
+                        }
+                    }
+                    this.is_darg_entering = true;
+                    console.log("  drag enter 2", this.window_title_area_.innerText, this.is_darg_entering);
+                }
+            });
+            this.window_holder_.addEventListener('dragleave', (event) => {
+                event.preventDefault();
+                if (this.is_darg_entering === false) {
+                    console.log(this.window_title_area_.innerText, this.is_darg_entering);
+                    return;
+                }
+                const rect = event.currentTarget.getBoundingClientRect();
+                if (event.clientY < rect.top || rect.bottom <= event.clientY || event.clientX < rect.left || rect.right <= event.clientX) {
+                    this.is_darg_entering = false;
+                    this.drop_area_.HideUp();
+                    console.log("  drag leave 2", this.window_title_area_.innerText, this.is_darg_entering);
+                }
+                console.log("drag leave 1", this.window_title_area_.innerText, this.is_darg_entering, rect.top, rect.left, rect.bottom, rect.right, `(${event.clientX}, ${event.clientY})`);
+            });
+            this.window_holder_.addEventListener('dragover', (event) => {
+                event.preventDefault();
+            });
+            this.window_holder_.addEventListener('drop', (event) => {
+                if (event === null)
+                    return;
+                if (event.dataTransfer === null)
+                    return;
+                event.stopPropagation();
+                event.preventDefault();
+                this.drop_area_.HideUp();
+                const drag_window_id = parseInt(event.dataTransfer.getData("window_id"));
+                HtmlDockingWindow.SwapWindow(this.window_id_, drag_window_id);
+            });
+            this.window_holder_.addEventListener("resize", (event) => {
+                this.window_exterior_.style.width = this.window_holder_.style.width;
+                this.window_exterior_.style.height = this.window_holder_.style.height;
+            });
+            (_a = HtmlDockingWindow.observer_) === null || _a === void 0 ? void 0 : _a.observe(this.window_exterior_, { attributes: true, childList: true, characterData: true });
+        }
+        static CreateText(text) {
+            const span = document.createElement("span");
+            span.innerHTML = text;
+            return span;
+        }
+        static SwapWindow(lhv_window_id_, rhv_window_id_) {
+            if (lhv_window_id_ === rhv_window_id_)
+                return;
+            if (HtmlDockingWindow.window_list_ === null) {
+                return;
+            }
+            let lhw = null;
+            let rhw = null;
+            for (let element of HtmlDockingWindow.window_list_) {
+                if (element.window_id_ === lhv_window_id_) {
+                    lhw = element;
+                }
+                if (element.window_id_ === rhv_window_id_) {
+                    rhw = element;
+                }
+            }
+            if (lhw === null)
+                return;
+            if (rhw === null)
+                return;
+            if (lhw.parent_container_ === null)
+                return;
+            if (rhw.parent_container_ === null)
+                return;
+            const lhw_parent = lhw.parent_container_;
+            const rhw_parent = rhw.parent_container_;
+            const lhw_grid_area = lhw.window_holder_.style.gridArea;
+            const rhw_grid_area = rhw.window_holder_.style.gridArea;
+            const lhw_type = lhw_parent.GetEntryType();
+            const rhw_type = rhw_parent.GetEntryType();
+            if (lhw.window_holder_.contains(rhw.window_holder_))
+                return;
+            if (rhw.window_holder_.contains(lhw.window_holder_))
+                return;
+            lhw_parent.Remove(lhw);
+            rhw_parent.Remove(rhw);
+            const EnterType = function (enrty_type) {
+                if (enrty_type.vertical === true && enrty_type.horizontal === true) {
+                    return "single";
+                }
+                if (enrty_type.vertical === true) {
+                    return "vertical";
+                }
+                return "horizontal";
+            };
+            lhw_parent.Enter(rhw, parseInt(lhw_grid_area.slice(1)), EnterType(lhw_type));
+            rhw_parent.Enter(lhw, parseInt(rhw_grid_area.slice(1)), EnterType(rhw_type));
+            console.log(lhv_window_id_, rhv_window_id_);
+            console.log(lhw.window_title_area_.innerText, rhw.window_title_area_.innerText);
+            console.log(lhw.window_holder_.style.gridArea, rhw.window_holder_.style.gridArea);
+        }
+        get root() {
+            return this.window_holder_;
+        }
+        get frame() {
+            return this.window_exterior_;
+        }
+        set interior(new_interior) {
+            this.window_interior_.removeChild(this.user_interior_);
+            this.window_interior_.appendChild(new_interior);
+            this.user_interior_ = new_interior;
+        }
+        set parent_container(parent) {
+            this.parent_container_ = parent;
+        }
+    }
+    UiParts.HtmlDockingWindow = HtmlDockingWindow;
+})(UiParts || (UiParts = {}));
+/// <reference path="./html-docking-window.ts" />
+const CreateText = function (text) {
+    const span = document.createElement("span");
+    span.innerText = text;
+    return span;
+};
+const MakeDummyInnor = function (caption) {
+    const innor = document.createElement("div");
+    innor.appendChild(CreateText(caption));
+    innor.style.height = "120px";
+    return innor;
+};
+const Initialize = function () {
+    var _a, _b;
+    const demo_area = document.getElementById("demo");
+    const window_a = new UiParts.HtmlDockingWindow("Test A", MakeDummyInnor("AAAAAAAAAAAAAAAA"));
+    const window_b = new UiParts.HtmlDockingWindow("Test B", MakeDummyInnor("BBBBBBBBBBBBBBBB"));
+    const window_c = new UiParts.HtmlDockingWindow("Test C", MakeDummyInnor("CCCCCCCCCCCCCCCC"));
+    const window_d = new UiParts.HtmlDockingWindow("Test D", MakeDummyInnor("DDDDDDDDDDDDDDDD"));
+    const container_a = new UiParts.HtmlWindowContainer(window_a);
+    const container_b = new UiParts.HtmlWindowContainer(window_c);
+    //	container.Enter(window_a, 0, "horizontal");
+    container_a.Enter(window_b, 1, "horizontal");
+    container_b.Enter(window_d, 1, "vertical");
+    window_b.interior = container_b.root;
+    demo_area === null || demo_area === void 0 ? void 0 : demo_area.appendChild(container_a.root);
+    const button_a = document.createElement("button");
+    button_a.innerText = "++++";
+    button_a.addEventListener("click", (event) => {
+        window_a.root.style.width = (parseInt(window_a.root.style.width) + 50).toString();
+        window_b.root.style.width = (parseInt(window_b.root.style.width) - 50).toString();
+    });
+    const button_b = document.createElement("button");
+    button_b.innerText = "----";
+    button_b.addEventListener("click", (event) => {
+        window_a.root.style.width = (parseInt(window_a.root.style.width) - 50).toString();
+        window_b.root.style.width = (parseInt(window_b.root.style.width) + 50).toString();
+    });
+    (_a = document.getElementById("command")) === null || _a === void 0 ? void 0 : _a.append(button_a);
+    (_b = document.getElementById("command")) === null || _b === void 0 ? void 0 : _b.append(button_b);
+};
+Initialize();
+
+/******/ })()
+;</script></body>
+
+</html>
