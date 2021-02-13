@@ -217,6 +217,8 @@ namespace UiParts {
 		private static window_id_counter_: number;
 		private static object_locate_table_: Map<HTMLDivElement, HtmlDockingWindow> | null;
 		private static observer_: MutationObserver | null;
+		private static last_dragoever_window_: HtmlDockingWindow | null = null;
+		private static dragging_window_: HtmlDockingWindow | null = null;
 
 		private static CreateText(text: string): HTMLSpanElement {
 			const span = document.createElement("span");
@@ -331,39 +333,58 @@ namespace UiParts {
 				if (event.dataTransfer === null) return;
 				event.stopPropagation();
 				event.dataTransfer.setData("window_id", this.window_id_.toString());
+				HtmlDockingWindow.dragging_window_ = this;
 				console.log("drag start", this.window_title_area_.innerText);
 			});
-			this.window_holder_.addEventListener('dragenter', (event) => {
+			this.window_holder_.addEventListener('dragend', (event) => {
+				event.stopPropagation();
+				HtmlDockingWindow.dragging_window_ = null;
+				if (HtmlDockingWindow.last_dragoever_window_ !== null) {
+					if (HtmlDockingWindow.last_dragoever_window_ !== this) {
+						HtmlDockingWindow.last_dragoever_window_.is_darg_entering = false;
+						HtmlDockingWindow.last_dragoever_window_.drop_area_.HideUp();
+						HtmlDockingWindow.last_dragoever_window_ = null;
+					}
+				}
+				console.log("drag end", this.window_title_area_.innerText);
+			});
+			this.window_holder_.addEventListener('dragleave', (event) => {
+				event.stopPropagation();
 				event.preventDefault();
-				const rect = (<HTMLDivElement>event.currentTarget).getBoundingClientRect();
-				console.log("drag enter 1", this.window_title_area_.innerText, this.is_darg_entering, rect.top, rect.left, rect.bottom, rect.right, `(${event.clientX}, ${event.clientY})`);
+				if (HtmlDockingWindow.last_dragoever_window_ !== null) {
+					if (HtmlDockingWindow.last_dragoever_window_ === this) {
+						HtmlDockingWindow.last_dragoever_window_.is_darg_entering = false;
+						HtmlDockingWindow.last_dragoever_window_.drop_area_.HideUp();
+						HtmlDockingWindow.last_dragoever_window_ = null;
+					}
+				}
+			});
+			this.window_holder_.addEventListener('dragover', (event) => {
+				event.stopPropagation();
+				event.preventDefault();
+				if (HtmlDockingWindow.last_dragoever_window_ !== null) {
+					if (HtmlDockingWindow.last_dragoever_window_ !== this) {
+						HtmlDockingWindow.last_dragoever_window_.is_darg_entering = false;
+						HtmlDockingWindow.last_dragoever_window_.drop_area_.HideUp();
+						HtmlDockingWindow.last_dragoever_window_ = null;
+					}
+				}
+				if (HtmlDockingWindow.dragging_window_ !== null) {
+					if (this.window_holder_.contains(HtmlDockingWindow.dragging_window_.window_holder_)) {
+						return;
+					}
+				}
 				if (this.is_darg_entering === false) {
 					if (event && event.dataTransfer) {
 						const drag_window_id = parseInt(event.dataTransfer.getData("window_id"));
 						if (this.window_id_ !== drag_window_id) {
 							this.drop_area_.Appear();
+							HtmlDockingWindow.last_dragoever_window_ = this;
+							this.is_darg_entering = true;
 						}
 					}
-					this.is_darg_entering = true;
-					console.log("  drag enter 2", this.window_title_area_.innerText, this.is_darg_entering);
 				}
-			});
-			this.window_holder_.addEventListener('dragleave', (event) => {
-				event.preventDefault();
-				if (this.is_darg_entering === false) {
-					console.log(this.window_title_area_.innerText, this.is_darg_entering);
-					return;
-				}
-				const rect = (<HTMLDivElement>event.currentTarget).getBoundingClientRect();
-				if (event.clientY < rect.top || rect.bottom <= event.clientY || event.clientX < rect.left || rect.right <= event.clientX) {
-					this.is_darg_entering = false;
-					this.drop_area_.HideUp();
-					console.log("  drag leave 2", this.window_title_area_.innerText, this.is_darg_entering);
-				}
-				console.log("drag leave 1", this.window_title_area_.innerText, this.is_darg_entering, rect.top, rect.left, rect.bottom, rect.right, `(${event.clientX}, ${event.clientY})`);
-			});
-			this.window_holder_.addEventListener('dragover', (event) => {
-				event.preventDefault();
+				console.log("drag over", this.window_title_area_.innerText, this.is_darg_entering);
 			});
 			this.window_holder_.addEventListener('drop', (event) => {
 				if (event === null) return;
